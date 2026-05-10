@@ -98,14 +98,17 @@
             text-align: center;
         }
 
+        /* 抽奖字体调小 */
         .lottery-display {
             min-height: 60px;
-            font-size: 32px;
+            font-size: 24px;
             font-weight: bold;
             color: #d32f2f;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-wrap: wrap;
+            gap: 16px;
         }
 
         .lottery-display.running {
@@ -194,6 +197,7 @@
             align-items: center;
             justify-content: center;
             margin-right: 12px;
+            flex-shrink: 0;
         }
 
         .empty-history {
@@ -202,18 +206,13 @@
             padding: 20px;
         }
 
-        .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
         @media (max-width: 480px) {
             .control-section {
                 flex-direction: column;
+            }
+            .lottery-display {
+                font-size: 20px;
+                gap: 10px;
             }
         }
     </style>
@@ -223,8 +222,8 @@
         <h1>🎉 幸运大抽奖 🎉</h1>
 
         <div class="input-section">
-            <label>输入名单（一行一个名字）</label>
-            <textarea id="nameList" placeholder="请输入名单，每行一个名字"></textarea>
+            <label>输入名单（一行一个名字，仅纯人名，禁止空格/标点/符号/数字）</label>
+            <textarea id="nameList" placeholder="请输入名单，每行一个纯人名"></textarea>
         </div>
 
         <div class="count-section">
@@ -269,7 +268,7 @@
         let winners = [];
         let history = [];
 
-        // 选择人数
+        // 选择中奖人数
         countBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 countBtns.forEach(b => b.classList.remove('active'));
@@ -278,20 +277,28 @@
             });
         });
 
-        // 获取名单
+        // 严格过滤：只允许中文、英文，剔除所有空格、标点、数字、特殊符号
+        function filterName(name) {
+            return name.replace(/[^a-zA-Z\u4e00-\u9fa5]/g, '').trim();
+        }
+
+        // 获取清洗后合法名单
         function getNames() {
-            return nameList.value.trim().split('\n').map(n => n.trim()).filter(n => n);
+            const rawArr = nameList.value.trim().split('\n');
+            let valid = rawArr.map(item => filterName(item)).filter(item => item);
+            // 去重
+            return [...new Set(valid)];
         }
 
         // 开始抽奖
         startBtn.addEventListener('click', () => {
             const names = getNames();
             if (names.length === 0) {
-                alert('请先输入名单！');
+                alert('请输入有效纯人名！\n不能带空格、标点、数字、特殊符号');
                 return;
             }
             if (names.length < selectedCount) {
-                alert(`至少需要${selectedCount}人`);
+                alert(`有效人数不足，至少需要 ${selectedCount} 人`);
                 return;
             }
 
@@ -300,12 +307,20 @@
                 startBtn.textContent = '停止抽奖';
                 lotteryDisplay.classList.add('running');
                 winnerBadge.style.display = 'none';
-                
-                let i = 0;
+
+                // 实现：抽几个人，就同时滚动显示几个名字
+                let pool = [...names];
+                let idxArr = new Array(selectedCount).fill(0);
+
                 animation = setInterval(() => {
-                    lotteryDisplay.textContent = names[i % names.length];
-                    i++;
-                }, 80);
+                    let showArr = [];
+                    for(let i=0;i<selectedCount;i++){
+                        idxArr[i]++;
+                        showArr.push(pool[idxArr[i] % pool.length]);
+                    }
+                    lotteryDisplay.textContent = showArr.join('　　');
+                }, 100);
+
             } else {
                 // 停止抽奖
                 clearInterval(animation);
@@ -313,32 +328,37 @@
                 startBtn.textContent = '开始抽奖';
                 lotteryDisplay.classList.remove('running');
 
+                // 过滤已中奖人员
                 const available = names.filter(n => !winners.includes(n));
                 const shuffled = [...available].sort(() => Math.random() - 0.5);
-                const selected = shuffled.slice(0, selectedCount);
-                
-                winners.push(...selected);
-                lotteryDisplay.textContent = selected.join('、');
+                const roundWinners = shuffled.slice(0, selectedCount);
+
+                winners.push(...roundWinners);
+
+                // 最终中奖一行展示
+                lotteryDisplay.textContent = roundWinners.join('　　');
                 lotteryDisplay.classList.add('winner');
                 winnerBadge.style.display = 'block';
 
-                selected.forEach(name => {
-                    history.push({ name, rank: history.length + 1 });
+                // 历史：本轮所有中奖者合并成一条记录
+                history.push({
+                    list: roundWinners,
+                    num: selectedCount
                 });
                 updateHistory();
             }
         });
 
-        // 更新历史
+        // 更新中奖历史：每轮一行展示全部
         function updateHistory() {
             if (history.length === 0) {
                 historyList.innerHTML = '<li class="empty-history">暂无中奖记录</li>';
                 return;
             }
-            historyList.innerHTML = history.map(h => `
+            historyList.innerHTML = history.map((item, index) => `
                 <li class="history-item">
-                    <span class="history-number">${h.rank}</span>
-                    <span>${h.name}</span>
+                    <span class="history-number">${index+1}</span>
+                    <span>${item.list.join('、')}（${item.num}人）</span>
                 </li>
             `).join('');
         }
