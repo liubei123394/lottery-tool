@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抽奖工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #d32f2f 0%, #c62828 50%, #b71c1c 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #d32f2f;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            border: 2px solid #f0f0f0;
+            border-radius: 12px;
+            font-size: 14px;
+            resize: none;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #ffc107;
+        }
+
+        .count-section {
+            margin-bottom: 20px;
+        }
+
+        .count-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .count-btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            color: #333;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .count-btn.active {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            border-color: #ff9800;
+            color: white;
+        }
+
+        .lottery-section {
+            background: linear-gradient(135deg, #fff8e1 0%, #fff3e0 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .lottery-display {
+            min-height: 60px;
+            font-size: 32px;
+            font-weight: bold;
+            color: #d32f2f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lottery-display.running {
+            color: #ff9800;
+        }
+
+        .lottery-display.winner {
+            color: #d32f2f;
+            animation: winnerPulse 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes winnerPulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        .winner-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .control-section {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 16px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+            color: white;
+        }
+
+        .reset-btn {
+            background: linear-gradient(135deg, #607d8b 0%, #546e7a 100%);
+            color: white;
+        }
+
+        .history-section {
+            background: #fafafa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .history-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .history-list {
+            list-style: none;
+        }
+
+        .history-item {
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #ffc107;
+            display: flex;
+            align-items: center;
+        }
+
+        .history-number {
+            width: 28px;
+            height: 28px;
+            background: #ffc107;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            .control-section {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 幸运大抽奖 🎉</h1>
+
+        <div class="input-section">
+            <label>输入名单（一行一个名字）</label>
+            <textarea id="nameList" placeholder="请输入名单，每行一个名字"></textarea>
+        </div>
+
+        <div class="count-section">
+            <label>选择中奖人数</label>
+            <div class="count-buttons">
+                <button class="count-btn active" data-count="1">1名</button>
+                <button class="count-btn" data-count="3">3名</button>
+                <button class="count-btn" data-count="5">5名</button>
+            </div>
+        </div>
+
+        <div class="lottery-section">
+            <div class="lottery-display" id="lotteryDisplay">点击开始抽奖</div>
+            <div class="winner-badge" id="winnerBadge">🎉 恭喜中奖！</div>
+        </div>
+
+        <div class="control-section">
+            <button class="control-btn start-btn" id="startBtn">开始抽奖</button>
+            <button class="control-btn reset-btn" id="resetBtn">重置</button>
+        </div>
+
+        <div class="history-section">
+            <div class="history-title">中奖历史</div>
+            <ul id="historyList" class="history-list">
+                <li class="empty-history">暂无中奖记录</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const nameList = document.getElementById('nameList');
+        const countBtns = document.querySelectorAll('.count-btn');
+        const lotteryDisplay = document.getElementById('lotteryDisplay');
+        const winnerBadge = document.getElementById('winnerBadge');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const historyList = document.getElementById('historyList');
+
+        let isRunning = false;
+        let selectedCount = 1;
+        let animation = null;
+        let winners = [];
+        let history = [];
+
+        // 选择人数
+        countBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                countBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedCount = +btn.dataset.count;
+            });
+        });
+
+        // 获取名单
+        function getNames() {
+            return nameList.value.trim().split('\n').map(n => n.trim()).filter(n => n);
+        }
+
+        // 开始抽奖
+        startBtn.addEventListener('click', () => {
+            const names = getNames();
+            if (names.length === 0) {
+                alert('请先输入名单！');
+                return;
+            }
+            if (names.length < selectedCount) {
+                alert(`至少需要${selectedCount}人`);
+                return;
+            }
+
+            if (!isRunning) {
+                isRunning = true;
+                startBtn.textContent = '停止抽奖';
+                lotteryDisplay.classList.add('running');
+                winnerBadge.style.display = 'none';
+                
+                let i = 0;
+                animation = setInterval(() => {
+                    lotteryDisplay.textContent = names[i % names.length];
+                    i++;
+                }, 80);
+            } else {
+                // 停止抽奖
+                clearInterval(animation);
+                isRunning = false;
+                startBtn.textContent = '开始抽奖';
+                lotteryDisplay.classList.remove('running');
+
+                const available = names.filter(n => !winners.includes(n));
+                const shuffled = [...available].sort(() => Math.random() - 0.5);
+                const selected = shuffled.slice(0, selectedCount);
+                
+                winners.push(...selected);
+                lotteryDisplay.textContent = selected.join('、');
+                lotteryDisplay.classList.add('winner');
+                winnerBadge.style.display = 'block';
+
+                selected.forEach(name => {
+                    history.push({ name, rank: history.length + 1 });
+                });
+                updateHistory();
+            }
+        });
+
+        // 更新历史
+        function updateHistory() {
+            if (history.length === 0) {
+                historyList.innerHTML = '<li class="empty-history">暂无中奖记录</li>';
+                return;
+            }
+            historyList.innerHTML = history.map(h => `
+                <li class="history-item">
+                    <span class="history-number">${h.rank}</span>
+                    <span>${h.name}</span>
+                </li>
+            `).join('');
+        }
+
+        // 重置
+        resetBtn.addEventListener('click', () => {
+            clearInterval(animation);
+            isRunning = false;
+            winners = [];
+            history = [];
+            startBtn.textContent = '开始抽奖';
+            lotteryDisplay.textContent = '点击开始抽奖';
+            lotteryDisplay.classList.remove('running', 'winner');
+            winnerBadge.style.display = 'none';
+            updateHistory();
+        });
+    </script>
+</body>
+</html>
