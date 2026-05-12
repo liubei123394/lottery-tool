@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>飞机射击小游戏</title>
+<style>
+  body { margin:0; overflow:hidden; font-family: Arial, sans-serif; background:#000; color:white; }
+  canvas { display:block; background:#111; }
+  #ui { position:absolute; top:10px; left:10px; }
+  button { margin-left:10px; }
+  #menu { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; flex-direction:column; background:#000; }
+  #menu button { margin:10px; padding:10px 20px; font-size:20px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <h1>飞机射击小游戏</h1>
+  <p>选择难度:</p>
+  <button onclick="startGame('easy')">简单</button>
+  <button onclick="startGame('normal')">普通</button>
+  <button onclick="startGame('hard')">困难</button>
+</div>
+
+<div id="ui" style="display:none;">
+  分数: <span id="score">0</span>
+  生命: <span id="lives">3</span>
+  <button id="pauseBtn">暂停/继续</button>
+  <button id="returnBtn">返回主页</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// 游戏变量
+let plane, bullets, enemies, score, lives, paused, enemySpeed, gameRunning;
+let animationId;
+let enemyInterval = null;
+
+// 初始化游戏数据
+function resetGame(difficulty){
+  plane = { x: canvas.width/2, y: canvas.height-100, width:40, height:60 };
+  bullets = [];
+  enemies = [];
+  score = 0;
+  lives = 3;
+  paused = false;
+  gameRunning = true;
+
+  document.getElementById('score').innerText = score;
+  document.getElementById('lives').innerText = lives;
+
+  if(difficulty === 'easy') enemySpeed = 1.5;
+  else if(difficulty === 'normal') enemySpeed = 2.5;
+  else enemySpeed = 3.5;
+}
+
+// 绘制飞机（三角形）
+function drawPlane() {
+  ctx.fillStyle = 'cyan';
+  ctx.beginPath();
+  ctx.moveTo(plane.x, plane.y - plane.height/2);
+  ctx.lineTo(plane.x - plane.width/2, plane.y + plane.height/2);
+  ctx.lineTo(plane.x + plane.width/2, plane.y + plane.height/2);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawBullets() {
+  ctx.fillStyle = 'yellow';
+  bullets.forEach(b => ctx.fillRect(b.x-5, b.y-10, 10, 20));
+}
+
+function drawEnemies() {
+  ctx.fillStyle = 'red';
+  enemies.forEach(e => ctx.fillRect(e.x-25, e.y-25, 50, 50));
+}
+
+// 游戏循环（只启动一次）
+function update() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if(gameRunning && !paused){
+    drawPlane();
+    drawBullets();
+    drawEnemies();
+
+    // 子弹逻辑
+    bullets.forEach((b,i) => {
+      b.y -= 10;
+      enemies.forEach((e,j) => {
+        if(b.x > e.x-25 && b.x < e.x+25 && b.y > e.y-25 && b.y < e.y+25){
+          bullets.splice(i,1);
+          enemies.splice(j,1);
+          score += 1;
+          document.getElementById('score').innerText = score;
+        }
+      });
+      if(b.y < 0) bullets.splice(i,1);
+    });
+
+    // 敌机逻辑
+    enemies.forEach((e,i) => {
+      e.y += enemySpeed;
+      if(e.y > canvas.height){
+        enemies.splice(i,1);
+        lives -= 1;
+        document.getElementById('lives').innerText = lives;
+        if(lives <= 0){
+          alert('游戏结束! 分数: ' + score);
+          showMenu();
+        }
+      }
+    });
+  }
+
+  animationId = requestAnimationFrame(update);
+}
+
+// 鼠标控制飞机
+document.addEventListener('mousemove', e => { if(!paused && gameRunning) plane.x = e.clientX; });
+// 点击发射子弹
+document.addEventListener('click', e => { if(!paused && gameRunning) bullets.push({ x: plane.x, y: plane.y-30 }); });
+// 暂停按钮
+document.getElementById('pauseBtn').addEventListener('click', () => paused = !paused);
+// 返回主页按钮
+document.getElementById('returnBtn').addEventListener('click', showMenu);
+
+// 开始游戏
+function startGame(difficulty){
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('ui').style.display = 'block';
+  resetGame(difficulty);
+
+  // 清除旧定时器
+  if(enemyInterval) clearInterval(enemyInterval);
+
+  // 生成敌机定时器
+  enemyInterval = setInterval(() => {
+    if(!paused && gameRunning) enemies.push({ x: Math.random()*canvas.width, y: -50 });
+  }, 1500);
+
+  // 如果动画循环还没启动，启动一次
+  if(!animationId) update();
+}
+
+// 返回主页
+function showMenu(){
+  paused = true;
+  gameRunning = false;
+  enemies = [];
+  bullets = [];
+
+  // 清除敌机生成器
+  if(enemyInterval) clearInterval(enemyInterval);
+  enemyInterval = null;
+
+  document.getElementById('menu').style.display = 'flex';
+  document.getElementById('ui').style.display = 'none';
+}
+
+</script>
+</body>
+</html>
